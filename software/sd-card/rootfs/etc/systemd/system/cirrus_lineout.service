@@ -1,0 +1,11 @@
+[Unit]
+Description=Setting output sound
+
+[Service]
+Type=oneshot
+ExecStart=/home/pi/morpheus/cirrus-scripts/Playback_to_Lineout.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+Alias=cirrus_lineout.service

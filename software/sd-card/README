@@ -1,0 +1,10 @@
+Tree overlay for rootfs and boot:
+
+The rootfs:
+The rootfs contains the different folder to write onto the raspberry sdcard:
+	_ /etc :
+		_  Runlevel folders for systemV (rc1.d, rc2.d rc.3.d rc4.d rc5.d rc6.d)
+		_ systemd/system -> contains service information. if executables path change, it can break dependencies
+	_ /lib :
+		_ Needed libraries precompiled needed.
+

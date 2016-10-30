@@ -1,0 +1,280 @@
+From e946c556832b69ca62c6ccf4477adb8ae9cdf48d Mon Sep 17 00:00:00 2001
+From: Florian Vaussard <florian.vaussard@heig-vd.ch>
+Date: Fri, 27 May 2016 15:00:16 +0200
+Subject: [PATCH 05/10] leds: Add driver for NCP5623
+
+Signed-off-by: Florian Vaussard <florian.vaussard@heig-vd.ch>
+---
+ drivers/leds/Kconfig        |   8 ++
+ drivers/leds/Makefile       |   1 +
+ drivers/leds/leds-ncp5623.c | 227 ++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 236 insertions(+)
+ create mode 100644 drivers/leds/leds-ncp5623.c
+
+diff --git a/drivers/leds/Kconfig b/drivers/leds/Kconfig
+index b1ab8bd..dfa04a0 100644
+--- a/drivers/leds/Kconfig
++++ b/drivers/leds/Kconfig
+@@ -576,6 +576,14 @@ config LEDS_BLINKM
+ 	  This option enables support for the BlinkM RGB LED connected
+ 	  through I2C. Say Y to enable support for the BlinkM LED.
+ 
++config LEDS_NCP5623
++	tristate "LED Support for NCP5623 I2C chip"
++	depends on LEDS_CLASS && I2C
++	help
++	  This option enables support for LEDs connected to NCP5623
++	  LED driver chips accessed via the I2C bus.
++	  Driver support brightness control.
++
+ config LEDS_POWERNV
+ 	tristate "LED support for PowerNV Platform"
+ 	depends on LEDS_CLASS
+diff --git a/drivers/leds/Makefile b/drivers/leds/Makefile
+index e9d53092..c18cf8e 100644
+--- a/drivers/leds/Makefile
++++ b/drivers/leds/Makefile
+@@ -66,6 +66,7 @@ obj-$(CONFIG_LEDS_MENF21BMC)		+= leds-menf21bmc.o
+ obj-$(CONFIG_LEDS_KTD2692)		+= leds-ktd2692.o
+ obj-$(CONFIG_LEDS_POWERNV)		+= leds-powernv.o
+ obj-$(CONFIG_LEDS_SEAD3)		+= leds-sead3.o
++obj-$(CONFIG_LEDS_NCP5623)		+= leds-ncp5623.o
+ 
+ # LED SPI Drivers
+ obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o
+diff --git a/drivers/leds/leds-ncp5623.c b/drivers/leds/leds-ncp5623.c
+new file mode 100644
+index 0000000..527cbfb0
+--- /dev/null
++++ b/drivers/leds/leds-ncp5623.c
+@@ -0,0 +1,227 @@
++/*
++ * Copyright 2016 Florian Vaussard <florian.vaussard@heig-vd.ch>
++ *
++ * Based on leds-tlc591xx.c
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; version 2 of the License.
++ */
++
++#include <linux/bitops.h>
++#include <linux/i2c.h>
++#include <linux/kernel.h>
++#include <linux/leds.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/of_device.h>
++#include <linux/slab.h>
++#include <linux/workqueue.h>
++
++#define NCP5623_MAX_LEDS	3
++#define NCP5623_MAX_STEPS	32
++#define NCP5623_MAX_CURRENT	31
++
++#define NCP5623_CMD_SHIFT	5
++#define CMD_SHUTDOWN		(0x00 << NCP5623_CMD_SHIFT)
++#define CMD_ILED		(0x01 << NCP5623_CMD_SHIFT)
++#define CMD_PWM1		(0x02 << NCP5623_CMD_SHIFT)
++#define CMD_PWM2		(0x03 << NCP5623_CMD_SHIFT)
++#define CMD_PWM3		(0x04 << NCP5623_CMD_SHIFT)
++#define CMD_UPWARD_DIM		(0x05 << NCP5623_CMD_SHIFT)
++#define CMD_DOWNWARD_DIM	(0x06 << NCP5623_CMD_SHIFT)
++#define CMD_DIM_STEP		(0x07 << NCP5623_CMD_SHIFT)
++
++#define NCP5623_DATA_MASK	GENMASK(NCP5623_CMD_SHIFT-1, 0)
++
++#define NCP5623_CMD(cmd, data)	(cmd | (data & NCP5623_DATA_MASK))
++
++#define ldev_to_led(c)		container_of(c, struct ncp5623_led, ldev)
++#define work_to_led(work)	container_of(work, struct ncp5623_led, work)
++
++struct ncp5623_led {
++	bool active;
++	unsigned int led_no;
++	struct led_classdev ldev;
++	struct work_struct work;
++	struct ncp5623_priv *priv;
++};
++
++struct ncp5623_priv {
++	struct ncp5623_led leds[NCP5623_MAX_LEDS];
++	struct i2c_client *client;
++};
++
++static int ncp5623_send_cmd(struct ncp5623_priv *priv, u8 cmd, u8 data)
++{
++	char cmd_data[1] = { NCP5623_CMD(cmd, data) };
++	return i2c_master_send(priv->client, cmd_data, ARRAY_SIZE(cmd_data));
++}
++
++static int ncp5623_set_pwm(struct ncp5623_priv *priv, struct ncp5623_led *led,
++			   u8 brightness)
++{
++	u8 cmd;
++
++	switch (led->led_no) {
++		case 0:
++			cmd = CMD_PWM1;
++			break;
++		case 1:
++			cmd = CMD_PWM2;
++			break;
++		case 2:
++			cmd = CMD_PWM3;
++			break;
++		default:
++			return -EINVAL;
++	}
++
++	return ncp5623_send_cmd(priv, cmd, brightness);
++}
++
++static void ncp5623_led_work(struct work_struct *work)
++{
++	struct ncp5623_led *led = work_to_led(work);
++	struct ncp5623_priv *priv = led->priv;
++	enum led_brightness brightness = led->ldev.brightness;
++	int err;
++
++	err = ncp5623_set_pwm(priv, led, brightness);
++
++	if (err)
++		dev_err(led->ldev.dev, "Failed setting brightness\n");
++}
++
++static void ncp5623_brightness_set(struct led_classdev *led_cdev,
++				   enum led_brightness brightness)
++{
++	struct ncp5623_led *led = ldev_to_led(led_cdev);
++
++	led->ldev.brightness = brightness;
++	schedule_work(&led->work);
++}
++
++static void ncp5623_destroy_devices(struct ncp5623_priv *priv, unsigned int j)
++{
++	int i = j;
++
++	while (--i >= 0) {
++		if (priv->leds[i].active) {
++			led_classdev_unregister(&priv->leds[i].ldev);
++			cancel_work_sync(&priv->leds[i].work);
++		}
++	}
++}
++
++static int ncp5623_configure(struct device *dev,
++			     struct ncp5623_priv *priv)
++{
++	unsigned int i;
++	int err = 0;
++
++	err = ncp5623_send_cmd(priv, CMD_ILED, NCP5623_MAX_CURRENT);
++	if (err < 0) {
++		dev_err(dev, "cannot set the current\n");
++		return err;
++	}
++
++	for (i = 0; i < NCP5623_MAX_LEDS; i++) {
++		struct ncp5623_led *led = &priv->leds[i];
++
++		if (!led->active)
++			continue;
++
++		led->priv = priv;
++		led->led_no = i;
++		led->ldev.brightness_set = ncp5623_brightness_set;
++		led->ldev.max_brightness = NCP5623_MAX_STEPS-1;
++		INIT_WORK(&led->work, ncp5623_led_work);
++		err = led_classdev_register(dev, &led->ldev);
++		if (err < 0) {
++			dev_err(dev, "couldn't register LED %s\n",
++				led->ldev.name);
++			goto exit;
++		}
++	}
++
++	return 0;
++
++exit:
++	ncp5623_destroy_devices(priv, i);
++	return err;
++}
++
++static const struct of_device_id ncp5623_of_match[] = {
++	{ .compatible = "onnn,ncp5623" },
++	{ /* sentinel */ },
++};
++MODULE_DEVICE_TABLE(of, ncp5623_of_match);
++
++static int ncp5623_probe(struct i2c_client *client,
++			 const struct i2c_device_id *id)
++{
++	struct device *dev = &client->dev;
++	struct device_node *np = dev->of_node, *child;
++	struct ncp5623_priv *priv;
++	int err, count, reg;
++
++	count = of_get_child_count(np);
++	if (!count || count > NCP5623_MAX_LEDS)
++		return -EINVAL;
++
++	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
++	if (!priv)
++		return -ENOMEM;
++
++	priv->client = client;
++
++	i2c_set_clientdata(client, priv);
++
++	for_each_child_of_node(np, child) {
++		err = of_property_read_u32(child, "reg", &reg);
++		if (err)
++			return err;
++		if (reg < 0 || reg >= NCP5623_MAX_LEDS)
++			return -EINVAL;
++		if (priv->leds[reg].active)
++			return -EINVAL;
++		priv->leds[reg].active = true;
++		priv->leds[reg].ldev.name =
++			of_get_property(child, "label", NULL) ? : child->name;
++		priv->leds[reg].ldev.default_trigger =
++			of_get_property(child, "linux,default-trigger", NULL);
++	}
++	return ncp5623_configure(dev, priv);
++}
++
++static int ncp5623_remove(struct i2c_client *client)
++{
++	struct ncp5623_priv *priv = i2c_get_clientdata(client);
++
++	ncp5623_destroy_devices(priv, NCP5623_MAX_LEDS);
++
++	return 0;
++}
++
++static const struct i2c_device_id ncp5623_id[] = {
++	{ "ncp5623" },
++	{},
++};
++MODULE_DEVICE_TABLE(i2c, ncp5623_id);
++
++static struct i2c_driver ncp5623_driver = {
++	.driver = {
++		.name = "ncp5623",
++		.of_match_table = of_match_ptr(ncp5623_of_match),
++	},
++	.probe = ncp5623_probe,
++	.remove = ncp5623_remove,
++	.id_table = ncp5623_id,
++};
++
++module_i2c_driver(ncp5623_driver);
++
++MODULE_AUTHOR("Florian Vaussard <florian.vaussard@heig-vd.ch>");
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("NCP5623 LED driver");
+-- 
+2.5.0
+

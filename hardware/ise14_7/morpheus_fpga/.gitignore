@@ -1,0 +1,30 @@
+#xilinx projects .gitignore template
+#ignore all...
+*
+#...except:
+##ise
+!*.xise
+!*.ucf
+!*.ipf
+##planahead
+!*.data/constrs*
+!*.data/runs
+!*.data/sources*
+!*.ppr
+##src
+!*.vhd
+!*.v
+##scripts
+!*.do
+#!*.tcl
+!*.bat
+##ipcore
+!*.xco
+!*.coe
+##thisfile
+!.gitignore
+##folders
+!sim
+!sources
+!sources/ip
+!sources/ip/rom_init

@@ -1,0 +1,79 @@
+#***********************************************************
+# User constraints Spartan6 xc6slx9-2tqg144c
+# Morpheus
+# 17.06.2016 
+#***********************************************************
+# Initial 17.06.2016 ACS
+#--------------------------------------------------------------------------
+
+############################################
+# 		BANK 0 3V3 
+############################################
+
+##NOT USED
+NET "PCM_dout_rpi_i"        LOC = P131  | IOSTANDARD = LVCMOS33;
+NET "PCM_din_rpi_o"         LOC = P132  | IOSTANDARD = LVCMOS33;
+NET "PCM_fs_rpi_o"          LOC = P133  | IOSTANDARD = LVCMOS33;
+NET "PCM_clk_rpi_o"         LOC = P134  | IOSTANDARD = LVCMOS33;
+
+NET "PCM_clk_cirrus_i"      LOC = P126  | IOSTANDARD = LVCMOS33;
+NET "PCM_fs_cirrus_i"       LOC = P124  | IOSTANDARD = LVCMOS33;
+NET "PCM_din_cirrus_i"      LOC = P123  | IOSTANDARD = LVCMOS33;
+NET "PCM_dout_cirrus_o"     LOC = P121  | IOSTANDARD = LVCMOS33;
+
+
+############################################
+# 		BANK 1 3V3
+############################################
+
+NET "FPGA_clock_24MHz_i"    LOC = P92   | IOSTANDARD = LVCMOS33;
+
+NET "SW_user_1_i"           LOC = P95   | IOSTANDARD = LVCMOS33;
+NET "SW_user_2_i"           LOC = P94   | IOSTANDARD = LVCMOS33;
+NET "LED_user_1_o"          LOC = P98   | IOSTANDARD = LVCMOS33;
+NET "LED_user_2_o"          LOC = P97   | IOSTANDARD = LVCMOS33;
+
+############################################
+# 		BANK 2 3V3
+############################################
+
+NET "FPGA_nReset_i"         LOC = P69   | IOSTANDARD = LVCMOS33;
+
+##NOT USED
+#NET "FPGA_DGND_i"           LOC = P60   | IOSTANDARD = LVCMOS33;
+
+#NET "FPGA_cclk"             LOC = P70   | IOSTANDARD = LVCMOS33;
+#NET "FPGA_din"              LOC = P65   | IOSTANDARD = LVCMOS33;
+#NET "FPGA_init_b"           LOC = P39   | IOSTANDARD = LVCMOS33;
+
+NET "FPGA_header1_o"          LOC = P55   | IOSTANDARD = LVCMOS33;
+NET "FPGA_header2_o"          LOC = P51   | IOSTANDARD = LVCMOS33;
+NET "FPGA_header3_o"          LOC = P50   | IOSTANDARD = LVCMOS33;
+NET "FPGA_header4_o"          LOC = P48   | IOSTANDARD = LVCMOS33;
+NET "FPGA_header5_o"          LOC = P47   | IOSTANDARD = LVCMOS33;
+NET "FPGA_header6_o"          LOC = P46   | IOSTANDARD = LVCMOS33;
+NET "FPGA_header7_o"          LOC = P45   | IOSTANDARD = LVCMOS33;
+NET "FPGA_header8_o"          LOC = P44   | IOSTANDARD = LVCMOS33;
+#NET "FPGA_header9"          LOC = P43   | IOSTANDARD = LVCMOS33;
+#NET "FPGA_header10"         LOC = P41   | IOSTANDARD = LVCMOS33;
+
+
+############################################
+# 		BANK 3 3V3
+############################################
+
+NET "SPI_bus_sclk_i"         LOC = P14   | IOSTANDARD = LVCMOS33;
+NET "SPI_bus_mosi_i"         LOC = P16   | IOSTANDARD = LVCMOS33;
+NET "SPI_bus_miso_o"         LOC = P15   | IOSTANDARD = LVCMOS33;
+NET "SPI_cs_i"               LOC = P12   | IOSTANDARD = LVCMOS33;
+
+##NOT USED
+#NET "I2C_sda"                LOC = P24   | IOSTANDARD = LVCMOS33;
+#NET "I2C_scl"                LOC = P23   | IOSTANDARD = LVCMOS33;
+
+############################################
+# 		Timing Constraints
+############################################
+
+NET "FPGA_clock_24MHz_i" TNM_NET = FPGA_clock_24MHz_i;
+TIMESPEC TS_FPGA_clock_24MHz_i = PERIOD "FPGA_clock_24MHz_i" 41.666 ns HIGH 50%;

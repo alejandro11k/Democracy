@@ -1,0 +1,11 @@
+[Unit]
+Description=Setting input sound
+
+[Service]
+Type=oneshot
+ExecStart=/home/pi/morpheus/cirrus-scripts/Record_from_lineIn.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+Alias=cirrus_linein.service

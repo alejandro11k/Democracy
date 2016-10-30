@@ -1,0 +1,90 @@
+#!/usr/bin/python3.4
+# coding=utf-8
+
+import socket
+import os
+import fnmatch
+
+path = "/home/pi/morpheus/instruments"
+matches = []
+
+TCP_IP = '127.0.0.1'
+TCP_PORT = 9800
+BUFFER_SIZE = 1024
+
+def usage():
+    print("Instrument selector")
+    print("h\t Display this help")
+    print("g\t Set fluidsynth gain")
+    print("x\t Give you a list of instrument and let you choose the instrument")
+    print("p\t Give another path where to get the instrument")
+    print("q\t Quit the application")
+
+def list_of_available_instruments():
+    list_all_sf2()
+    iter_val = 0
+    for string_file in matches:
+        print(str(iter_val)  + ". " + string_file)
+        iter_val += 1
+
+    if(iter_val == 0):
+        print("Not instrument in the folder " + path)
+
+    return iter_val - 1
+
+def set_new_path():
+    path = input("Enter a new path\n")
+
+def set_gain():
+    gain_value =  input("Gain Value to set (min 0.000, max 5.000)\n> ")
+    try:
+       s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+       s.connect((TCP_IP, TCP_PORT))
+       MESSAGE = bytes('gain ' + gain_value, 'UTF-8')
+       rc = s.send(MESSAGE)
+       s.close()
+    except socket.error:
+        print("Could not connect to Fluidsynth. Please check if connected or if you are root")
+
+
+def list_all_sf2():
+    del matches[:]
+    for root, dirnames, filenames in os.walk(path):
+        for filename in fnmatch.filter(filenames, '*.[Ss][Ff]2'):
+            matches.append(os.path.join(root, filename))
+
+def choose_instrument():
+    num_tot = list_of_available_instruments()
+    inst_num = input("Which instrument to choose ? \n> ")
+    if(num_tot < int(inst_num) or int(inst_num) < 0):
+        print("Wrong selection")
+        return
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((TCP_IP, TCP_PORT))
+#        s.send(bytes('unload 1', 'UTF-8'))
+        MESSAGE = bytes('load ' + matches[int(inst_num)], 'UTF-8')
+        rc = s.send(MESSAGE)
+        s.close()
+
+        if(rc <= 0):
+            print("Couldn't connect to JACK server")
+    except socket.error:
+        print("Could not connect to Fluidsynth. Please check if connected or if you are root")
+
+
+options = { 'h' : usage,
+            'p' : set_new_path,
+            'q' : exit,
+            'g' : set_gain,
+            'x' : choose_instrument,
+           }
+
+usage()
+
+while 1:
+    key_pressed = input("Select an option\n> ")
+    print("Pressed : " + key_pressed + "\n")
+    options.get(key_pressed,usage)()
+
+

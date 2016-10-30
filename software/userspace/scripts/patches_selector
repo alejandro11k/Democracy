@@ -1,0 +1,178 @@
+#!/usr/bin/python3.4
+#coding=utf-8
+
+import socket
+import traceback
+import sys
+import os
+import fnmatch
+import subprocess
+import time
+import signal
+from subprocess import CalledProcessError
+
+path = "/home/pi/morpheus/patches"
+matches = []
+application_running = True
+
+def signal_handler(signal,frame):
+    global application_running
+    application_running = False
+    print("\nQuitting application")
+    exit(0)
+
+def play_midifile():
+    try:
+        midi_path = input("Path to the midi file: \n>")
+        if not os.path.exists(midi_path):
+            print(midi_path + "Not a correct path")
+            return
+
+        subprocess.Popen(["/usr/bin/nohup","aplaymidi", "-p20:0", midi_path, "&>/dev/null"], stderr=subprocess.DEVNULL,stdout=subprocess.DEVNULL)
+    except:
+        print("Error while starting aplaymidi")
+
+
+
+#Here we are starting all the different applications needed to use puredata
+def init_configuration():
+    try:
+        print("Starting Jackd")
+        subprocess.Popen(["/sbin/modprobe", "snd-virmidi","index=1","midi_devs=1"])
+        subprocess.check_output(["/bin/pidof","jackd"])
+    except CalledProcessError:
+        subprocess.Popen(["/usr/bin/nohup","/usr/bin/jackd", "-P71","-p16","-t2000","-dalsa","-p128","-r44100", "-s", "&>/dev/null"], stdout=subprocess.DEVNULL,creationflags=0x8)
+        time.sleep(2)
+    except Exception as e:
+        print("Failed to start process modprobe. Please check if connected or if you are root")
+        print(str(e))
+        return -1
+
+
+    try:
+        print("Starting Fluidsynth")
+        subprocess.check_output(["/bin/pidof","fluidsynth"])
+        print("PID value " + pid.decode())
+    except CalledProcessError:
+        subprocess.Popen(["/usr/bin/nohup","/usr/bin/fluidsynth", "-i","-s","-ajack", "-mjack","-r 44100","-g 0.5","-R","0" ,"/home/pi/morpheus/instruments/JL_Ibanez_Guitar.sf2"],stderr=subprocess.DEVNULL,stdout=subprocess.DEVNULL)
+        time.sleep(2)
+    except Exception as e:
+        print("Failed to start process fluidsynth. Please check if connected or if you are root")
+        print(str(e))
+        return -1
+
+    try:
+        print("Starting a2jmidid bridge")
+        subprocess.check_output(["/bin/pidof","a2jmidid"])
+    except CalledProcessError:
+        subprocess.Popen(["/usr/bin/nohup","/usr/bin/a2jmidid", "-e"],stderr=subprocess.DEVNULL,stdout=subprocess.DEVNULL)
+        time.sleep(2)
+    except Exception as e:
+        print("Failed to start process a2jmidid. Please check if connected or if you are root")
+        print(str(e))
+        return -1
+
+    return 0
+
+def usage():
+    print("Path_selector")
+    print("h\t Display this help")
+    print("l\t Display list of patches")
+    print("m\t Play a midi file onto the midi entry")
+    print("x\t Display a list of patches and let you choose the one you want to execute")
+
+def list_of_available_patches():
+    list_all_pd()
+    iter_val = 0
+    for string_file in matches:
+        print(str(iter_val)  + ". " + string_file)
+        iter_val += 1
+
+    if(iter_val == 0):
+        print("Not instrument in the folder " + path)
+
+    return iter_val - 1
+
+def set_new_path():
+    path = input("Enter a new path\n")
+
+
+def list_all_pd():
+    del matches[:]
+    for root, dirnames, filenames in os.walk(path):
+        for filename in fnmatch.filter(filenames, '*.[Pp][dD]'):
+            matches.append(os.path.join(root, filename))
+
+def connect_jack():
+    subprocess.Popen(["/usr/bin/jack_connect", "a2j:Virtual Raw MIDI 1-0 [20] (capture): VirMIDI 1-0","fluidsynth:midi"])
+    subprocess.Popen(["/usr/bin/jack_connect", "fluidsynth:r_00","system:playback_2"])
+    subprocess.Popen(["/usr/bin/jack_connect", "fluidsynth:l_00","system:playback_1"])
+
+def choose_patch():
+    num_tot = list_of_available_patches()
+
+# If no patcher were selected
+    if(num_tot < 0):
+        return
+
+    patch_num = input("Which instrument to choose ? \n> ")
+    try:
+    	patch_num = int(patch_num)
+    except ValueError:
+        print("Only number can be entered")
+        return
+
+    if(num_tot < int(patch_num) or int(patch_num) < 0):
+        print("Wrong selection")
+        return
+
+    if(0 > init_configuration()):
+        return
+
+    connect_jack()
+
+    try:
+        pid = subprocess.check_output(["/bin/pidof","pd-extended"])
+        subprocess.Popen(["/bin/kill","-9 ",str(pid)])
+        subprocess.Popen(["/usr/bin/nohup", "/usr/bin/pd-extended", "-nogui","-jack","-mididev","1",matches[patch_num]],stderr=subprocess.DEVNULL,stdout=subprocess.DEVNULL)
+    except CalledProcessError:
+        print("Starting first pd-extended")
+        subprocess.Popen(["/usr/bin/nohup", "/usr/bin/pd-extended", "-nogui","-jack","-mididev","1",matches[patch_num]],stderr=subprocess.DEVNULL,stdout=subprocess.DEVNULL)
+    except Exception as e:
+        print("Could not start pd-extended. Please check if connected or if you are root")
+        traceback.print_tb(e.__traceback__)
+        print(str(2))
+
+    print("Application Running!!!")
+
+####################################### Beginning of the program here ###################3
+
+#First check if root priviledges
+if os.getuid() != 0:
+    print("\033[1m\033[91mYou are not root, please type:\n\tsudo " + __file__ + "\033[0m")
+    exit(-1)
+
+# here we catch the CTRL+C
+signal.signal(signal.SIGINT, signal_handler)
+options = { 'h' : usage,
+            'l' : list_of_available_patches,
+            'x' : choose_patch,
+	    'm' : play_midifile,
+            'q' : exit
+           }
+usage()
+
+while application_running:
+    try:
+        key_pressed = input("Select an option\n> ")
+        print("Pressed : " + key_pressed + "\n")
+        options.get(key_pressed,usage)()
+    except Exception as e:
+        print("Error during execution, Existing")
+        traceback.print_tb(e.__traceback__)
+        print(str(e))
+        exit(-1)
+
+exit(0)
+
+

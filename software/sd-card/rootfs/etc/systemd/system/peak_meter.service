@@ -1,0 +1,12 @@
+[Unit]
+Description=Peak meter
+After=led_mgr.service jackd.service
+Type=forking
+
+[Service]
+ExecStart=/home/pi/morpheus/peak-meter/peak-meter
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
+Alias=peak_meter.service

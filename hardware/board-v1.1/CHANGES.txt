@@ -1,0 +1,8 @@
+Changes v1.0 -> v1.1
+
+- Fixed footprint of K1 relay (bottom view/top view)
+- Added flyback diode (D17) to K1 relay
+- Removed R56 from FPGA
+- Fixed anode/cathode orientation of D16 for pick&place
+- Removed R14, R15, R16, R17 (0 ohm FPGA by-pass on PCM bus)
+- Fixed clearance problem between copper plane on top/bot and PCB outline

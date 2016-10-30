@@ -1,0 +1,14 @@
+[Unit]
+Description=Start Jack
+Type=forking
+After=sound.target
+
+[Service]
+Environment="DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket"
+ExecStart=/usr/bin/jackd -P70 -p16 -t2000 -dalsa -p128 -r44100 -s 
+ExecStartPost=/bin/sleep 5
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
+Alias=jackd.service

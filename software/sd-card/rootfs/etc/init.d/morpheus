@@ -1,0 +1,37 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          morpheus
+# Required-Start:
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Morpheus startup script
+### END INIT INFO
+
+PATH=/sbin:/bin:/usr/bin
+
+FOOTSWITCH_EXEC="/home/pi/morpheus/scripts/run-footswitch-watcher.sh"
+
+do_start () {
+	echo "Starting Morpheus"
+	echo heartbeat > "/sys/class/leds/morpheus:power:green/trigger"
+
+	nohup $FOOTSWITCH_EXEC &
+}
+
+case "$1" in
+  start)
+	do_start
+	;;
+  restart|reload|force-reload)
+	echo "Error: argument '$1' not supported" >&2
+	exit 3
+	;;
+  stop|status)
+	# No-op
+	;;
+  *)
+	echo "Usage: $0 start|stop" >&2
+	exit 3
+	;;
+esac

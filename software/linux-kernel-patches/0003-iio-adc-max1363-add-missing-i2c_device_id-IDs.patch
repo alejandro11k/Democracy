@@ -1,0 +1,28 @@
+From 04fb8b47cfe8127af14ce55660d1c5d028f5520d Mon Sep 17 00:00:00 2001
+From: Florian Vaussard <florian.vaussard@heig-vd.ch>
+Date: Fri, 27 May 2016 12:09:17 +0200
+Subject: [PATCH 03/10] iio: adc: max1363: add missing i2c_device_id IDs
+
+Signed-off-by: Florian Vaussard <florian.vaussard@heig-vd.ch>
+---
+ drivers/iio/adc/max1363.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/iio/adc/max1363.c b/drivers/iio/adc/max1363.c
+index 929508e..b5d28c0 100644
+--- a/drivers/iio/adc/max1363.c
++++ b/drivers/iio/adc/max1363.c
+@@ -1680,6 +1680,10 @@ static const struct i2c_device_id max1363_id[] = {
+ 	{ "max11615", max11615 },
+ 	{ "max11616", max11616 },
+ 	{ "max11617", max11617 },
++	{ "max11644", max11644 },
++	{ "max11645", max11645 },
++	{ "max11646", max11646 },
++	{ "max11647", max11647 },
+ 	{}
+ };
+ 
+-- 
+2.5.0
+

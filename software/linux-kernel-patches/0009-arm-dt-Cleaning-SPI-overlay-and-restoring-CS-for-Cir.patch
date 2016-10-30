@@ -1,0 +1,67 @@
+From 277ec1e7ab273882498734219bf96e279662b379 Mon Sep 17 00:00:00 2001
+From: Florian Vaussard <florian.vaussard@heig-vd.ch>
+Date: Fri, 17 Jun 2016 16:42:41 +0200
+Subject: [PATCH 09/10] arm/dt: Cleaning SPI overlay and restoring CS for
+ Cirrus
+
+Signed-off-by: Florian Vaussard <florian.vaussard@heig-vd.ch>
+---
+ .../boot/dts/overlays/spi-fpgamorpheus-overlay.dts | 28 ++++------------------
+ 1 file changed, 5 insertions(+), 23 deletions(-)
+
+diff --git a/arch/arm/boot/dts/overlays/spi-fpgamorpheus-overlay.dts b/arch/arm/boot/dts/overlays/spi-fpgamorpheus-overlay.dts
+index ec30788..7ede6a1 100644
+--- a/arch/arm/boot/dts/overlays/spi-fpgamorpheus-overlay.dts
++++ b/arch/arm/boot/dts/overlays/spi-fpgamorpheus-overlay.dts
+@@ -8,13 +8,8 @@
+ 	fragment@0 {
+ 		target = <&gpio>;
+ 		__overlay__ {
+-			spi0_pins: spi0_pins {
+-				brcm,pins = <9 10 11>;
+-				brcm,function = <4>; /* alt4*/
+-			};
+-
+-			spi0_cs_pins: spi0_cs_pins {
+-				brcm,pins = <6>;
++			spi0_cs_morpheus_pins: spi0_cs_morpheus_pins {
++				brcm,pins = <6 7>;
+ 				brcm,function = <1>; /* output */
+ 			};
+ 		};
+@@ -23,29 +18,16 @@
+ 	fragment@1 {
+ 		target = <&spi0>;
+ 		 __overlay__ {
+-			/* needed to avoid dtc warning */
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+ 			pinctrl-names = "default";
+-			pinctrl-0 = <&spi0_pins &spi0_cs_pins>;
+-			cs-gpios = <&gpio 6 1>;
++			pinctrl-0 = <&spi0_pins &spi0_cs_morpheus_pins>;
++			cs-gpios = <&gpio 6 1>, <&gpio 7 1>;
+ 			status = "okay";
+ 
+-			spidev0_0: spidev@0 {
+-				compatible = "spidev";
+-				reg = <0>;      /* CE0 */
+-				#address-cells = <1>;
+-				#size-cells = <0>;
+-				spi-max-frequency = <50000>;
++			spidev@0 {
+ 				status = "okay";
+ 			};
+ 		};
+ 	};
+-
+-	fragment@2 {
+-		target = <&aux>;
+-		__overlay__ {
+-			status = "okay";
+-		};
+-	};
+ };
+-- 
+2.5.0
+

@@ -1,0 +1,29 @@
+From 6102f452c90af473361370a72fccccf08d9d64b4 Mon Sep 17 00:00:00 2001
+From: Florian Vaussard <florian.vaussard@heig-vd.ch>
+Date: Fri, 17 Jun 2016 16:58:20 +0200
+Subject: [PATCH 10/10] leds: ncp5623: Fix incorrect return value
+
+Signed-off-by: Florian Vaussard <florian.vaussard@heig-vd.ch>
+---
+ drivers/leds/leds-ncp5623.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/leds/leds-ncp5623.c b/drivers/leds/leds-ncp5623.c
+index 527cbfb0..37bf6d5 100644
+--- a/drivers/leds/leds-ncp5623.c
++++ b/drivers/leds/leds-ncp5623.c
+@@ -55,7 +55,10 @@ struct ncp5623_priv {
+ static int ncp5623_send_cmd(struct ncp5623_priv *priv, u8 cmd, u8 data)
+ {
+ 	char cmd_data[1] = { NCP5623_CMD(cmd, data) };
+-	return i2c_master_send(priv->client, cmd_data, ARRAY_SIZE(cmd_data));
++	int err;
++
++	err = i2c_master_send(priv->client, cmd_data, ARRAY_SIZE(cmd_data));
++	return (err < 0 ? err : 0);
+ }
+ 
+ static int ncp5623_set_pwm(struct ncp5623_priv *priv, struct ncp5623_led *led,
+-- 
+2.5.0
+

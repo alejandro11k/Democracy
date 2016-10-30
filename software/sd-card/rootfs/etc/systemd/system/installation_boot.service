@@ -1,0 +1,13 @@
+[Unit]
+Description=First Boot script execution
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/pi/morpheus/first_boot/first_boot.sh
+ExecStartPost=/usr/bin/systemctl disable installation_boot.service
+StandardOutput=journal+console
+StandardError=journal+console
+[Install]
+WantedBy=multi-user.target
+Alias=installation_boot.service

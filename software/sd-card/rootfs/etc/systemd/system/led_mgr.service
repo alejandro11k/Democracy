@@ -1,0 +1,12 @@
+[Unit]
+Description=Leds Manager for Peak Meter
+Type=forking
+After=jackd.service
+
+[Service]
+ExecStart=/home/pi/morpheus/scripts/led_mgr
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
+Alias=led_mgr.service

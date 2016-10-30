@@ -1,0 +1,10 @@
+#N canvas 2339 535 710 300 10;
+#X obj 31 179 netsend;
+#X msg 104 139 disconnect;
+#X msg 40 65 send \$1;
+#X floatatom 38 1 5 0 0 0 - - -, f 5;
+#X msg 129 92 connect 169.254.0.2 52522;
+#X connect 1 0 0 0;
+#X connect 2 0 0 0;
+#X connect 3 0 2 0;
+#X connect 4 0 0 0;

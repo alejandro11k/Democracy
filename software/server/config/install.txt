@@ -1,0 +1,5 @@
+
+aptitude install hostapd isc-dhcp-server
+aptitude install python-flask
+aptitude install python-wtforms python-flaskext.wtf
+

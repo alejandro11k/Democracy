@@ -1,0 +1,104 @@
+#!/usr/bin/python3.4
+# coding=utf-8
+
+import os
+import sys
+import traceback
+import time
+#Catch ctrl + c to clean pipe and switch off led
+import signal
+import struct
+
+#enumeration
+from enum import Enum
+
+#Class  led enum
+class LedColor(Enum):
+    red = 1
+    green = 2
+    orange = 3
+    #none correspond to switched off led
+    none = 4
+
+
+#Global led status variable
+ledstatus = LedColor.none
+
+def value_handling(level, statusled):
+#led red called
+
+	print("writing" + str(ledstatus) + str(statusled))
+	if(level >= 0.55 and statusled != LedColor.red):
+
+		os.system("echo 31 > /sys/class/leds/morpheus\:level\:red/brightness")
+		os.system("echo 0 > /sys/class/leds/morpheus\:level\:green/brightness")
+		os.system("echo 0 > /sys/class/leds/morpheus\:level\:blue/brightness")
+		return LedColor.red
+
+#led oranged called
+	if(level < 0.55 and level > 0.35 and statusled != LedColor.orange):
+		os.system("echo 15> /sys/class/leds/morpheus\:level\:green/brightness")
+		os.system("echo 15 > /sys/class/leds/morpheus\:level\:red/brightness")
+		os.system("echo 9 > /sys/class/leds/morpheus\:level\:blue/brightness")
+		return LedColor.orange
+#led green called
+	if(level >= 0.01 and level <= 0.35 and statusled != LedColor.green):
+		os.system("echo 25> /sys/class/leds/morpheus\:level\:green/brightness")
+		os.system("echo 0 > /sys/class/leds/morpheus\:level\:red/brightness")
+		os.system("echo 0 > /sys/class/leds/morpheus\:level\:blue/brightness")
+		return LedColor.green
+
+#leds off
+	if(level < 0.01 and statusled != LedColor.none):
+		os.system("echo 0 > /sys/class/leds/morpheus\:level\:blue/brightness")
+		os.system("echo 0 > /sys/class/leds/morpheus\:level\:red/brightness")
+		os.system("echo 0 > /sys/class/leds/morpheus\:level\:green/brightness")
+		return LedColor.none
+
+	return statusled
+
+def sig_handler(signal, frame):
+	global loop_pipe
+	loop_pipe = False
+	print("Caught ctrl +c ")
+	os.system("echo 0 > /sys/class/leds/morpheus\:level\:blue/brightness")
+	os.system("echo 0 > /sys/class/leds/morpheus\:level\:red/brightness")
+	os.system("echo 0 > /sys/class/leds/morpheus\:level\:green/brightness")
+	exit(0)
+
+def check_and_create_fifo():
+	try:
+		os.mkfifo(PIPE_LOCATION)
+	except:
+		i = 1
+
+	return open(PIPE_LOCATION, 'r')
+
+#Here starts the main
+#Pipe location
+
+PIPE_LOCATION = "/tmp/pipe_ledrgb"
+loop_pipe = True
+level = "0\n"
+#Init leds
+os.system("echo 0 > /sys/class/leds/morpheus\:level\:blue/brightness")
+os.system("echo 0 > /sys/class/leds/morpheus\:level\:red/brightness")
+os.system("echo 0 > /sys/class/leds/morpheus\:level\:green/brightness")
+#Init signals
+signal.signal(signal.SIGINT, sig_handler)
+while loop_pipe:
+	try:
+		try:
+			ledstatus = value_handling(float(level[:-1]), ledstatus)
+		except ValueError:
+			time.sleep(1)
+		fifo_h = check_and_create_fifo()
+		level = fifo_h.read(8) # read 8 bytes
+	except:
+		time.sleep(1)
+print("Quitting")
+os.system("echo 0 > /sys/class/leds/morpheus\:level\:blue/brightness")
+os.system("echo 0 > /sys/class/leds/morpheus\:level\:red/brightness")
+os.system("echo 0 > /sys/class/leds/morpheus\:level\:green/brightness")
+
+exit(-1)
